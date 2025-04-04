@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Planner SPA</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+    }
+    header {
+      background-color: #4CAF50;
+      color: white;
+      text-align: center;
+      padding: 1rem;
+    }
+    .controls {
+      text-align: center;
+      margin: 15px 0;
+    }
+    .calendar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .day {
+      border: 1px solid #ccc;
+      width: 13%;
+      min-height: 100px;
+      margin: 5px;
+      padding: 5px;
+      background-color: white;
+      cursor: pointer;
+    }
+    .day:hover {
+      background-color: #eef;
+    }
+    .event {
+      background: #ffcc00;
+      padding: 2px 5px;
+      margin-top: 5px;
+      font-size: 0.8rem;
+      border-radius: 3px;
+    }
+    #eventModal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border: 1px solid #ccc;
+      z-index: 1000;
+    }
+    #overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      z-index: 500;
+    }
+  </style>
+</head>
+<body>
+  <header>Event Planner</header>
+
+  <div class="controls">
+    <button class="btn btn-secondary" onclick="changeMonth(-1)">&lt; Prev</button>
+    <span id="monthYear"></span>
+    <button class="btn btn-secondary" onclick="changeMonth(1)">Next &gt;</button>
+  </div>
+
+  <div class="calendar container" id="calendar"></div>
+
+  <div id="overlay"></div>
+  <div id="eventModal">
+    <h5>Add Event</h5>
+    <p id="selectedDate"></p>
+    <input type="text" id="eventText" class="form-control mb-2" placeholder="Event Description">
+    <label>Reminder Time:</label>
+    <input type="time" id="eventTime" class="form-control mb-3">
+    <button class="btn btn-success" onclick="saveEvent()">Save</button>
+    <button class="btn btn-danger" onclick="closeModal()">Close</button>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script>
+    $(function () {
+      $(".nav-link").click(function (e) {
+        e.preventDefault();
+        const page = $(this).attr("href");
+        $("#calendar").load(page);
+      });
+    });
+
+    const calendar = document.getElementById('calendar');
+    const modal = document.getElementById('eventModal');
+    const overlay = document.getElementById('overlay');
+    const selectedDateText = document.getElementById('selectedDate');
+    const eventText = document.getElementById('eventText');
+    const eventTime = document.getElementById('eventTime');
+    const monthYearDisplay = document.getElementById('monthYear');
+
+    let currentDate = new Date();
+    let events = {}; // in-memory event storage
+    let activeDate = '';
+
+    function renderCalendar() {
+      calendar.innerHTML = '';
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      monthYearDisplay.innerText = `${currentDate.toLocaleString('default', { month: 'long' })} ${year}`;
+
+      for (let i = 0; i < firstDay; i++) {
+        const empty = document.createElement('div');
+        empty.classList.add('day');
+        empty.style.visibility = 'hidden';
+        calendar.appendChild(empty);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const cell = document.createElement('div');
+        cell.classList.add('day');
+        const dateKey = `${year}-${month + 1}-${day}`;
+        cell.innerHTML = `<strong>${day}</strong>`;
+        cell.onclick = () => openModal(dateKey);
+
+        if (events[dateKey]) {
+          events[dateKey].forEach(e => {
+            const evt = document.createElement('div');
+            evt.classList.add('event');
+            evt.innerText = e.text;
+            cell.appendChild(evt);
+          });
+        }
+
+        calendar.appendChild(cell);
+      }
+    }
+
+    function changeMonth(offset) {
+      currentDate.setMonth(currentDate.getMonth() + offset);
+      renderCalendar();
+    }
+
+    function openModal(date) {
+      activeDate = date;
+      selectedDateText.innerText = `Date: ${date}`;
+      eventText.value = '';
+      eventTime.value = '';
+      modal.style.display = 'block';
+      overlay.style.display = 'block';
+    }
+
+    function closeModal() {
+      modal.style.display = 'none';
+      overlay.style.display = 'none';
+    }
+
+    function saveEvent() {
+      const txt = eventText.value.trim();
+      const time = eventTime.value;
+      if (!txt) return;
+      if (!events[activeDate]) events[activeDate] = [];
+      events[activeDate].push({ text: txt, time: time });
+      closeModal();
+      renderCalendar();
+      scheduleReminder(activeDate, txt, time);
+    }
+
+    function scheduleReminder(dateStr, text, timeStr) {
+      if (!timeStr) return;
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const [hour, minute] = timeStr.split(':').map(Number);
+      const eventTime = new Date(year, month - 1, day, hour, minute);
+      const now = new Date();
+      const diff = eventTime - now;
+      if (diff > 0) {
+        setTimeout(() => {
+          alert(`Reminder: ${text} at ${timeStr} on ${dateStr}`);
+        }, diff);
+      }
+    }
+
+    renderCalendar();
+  </script>
+</body>
+</html>
